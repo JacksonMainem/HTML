@@ -1,142 +1,150 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Infix to Prefix Converter</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #f2f2f2;
-            padding: 30px;
-        }
-        input, button {
-            width: 100%;
-            padding: 10px;
-            font-size: 16px;
-            margin-top: 10px;
-        }
-        #result {
-            margin-top: 15px;
-            font-weight: bold;
-        }
-    </style>
+<meta charset="UTF-8">
+<title>Infix to Prefix Converter</title>
+<style>
+body { font-family: Arial, sans-serif; background: #f2f2f2; padding: 30px; }
+input, button { width: 100%; padding: 10px; font-size: 16px; margin-top: 10px; }
+#result { margin-top: 15px; font-weight: bold; }
+</style>
 </head>
 <body>
 
 <h2>Infix to Prefix Converter</h2>
 
-<input type="text" id="infix" placeholder="Enter Infix Expression (e.g., A%(B+C))">
+<input type="text" id="infix" placeholder="Enter Infix Expression (e.g., A+(B*C))">
 <button onclick="convert()">Convert</button>
 
 <div id="result"></div>
 
 <script>
-    function precedence(c) {
-        switch (c) {
-            case '+':
-            case '-': return 1;
-            case '*':
-            case '/':
-            case '%': return 2; // Modulus same as multiply/divide
-            case '^': return 3;
+// Operator precedence
+function precedence(c) {
+    switch(c) {
+        case '+': case '-': return 1;
+        case '*': case '/': case '%': return 2;
+        case '^': return 3;
+    }
+    return -1;
+}
+
+function isOperator(c) {
+    return "+-*/^%".includes(c);
+}
+
+// Full validation with numbers blocked
+function validateInfix(exp) {
+    exp = exp.trim();
+    if (!exp) return { valid:false, message:"❌ Please enter an expression" };
+
+    // Cannot start with operator
+    for (let i = 0; i < exp.length; i++) {
+        if (exp[i] !== ' ') {
+            if (isOperator(exp[i])) return { valid:false, message:"❌ Invalid infix: cannot start with an operator" };
+            break;
         }
-        return -1;
     }
 
-    function isOperator(c) {
-        return "+-*/^%".includes(c);
-    }
-
-    // Validation
-    function isValidInfix(exp) {
-        let stack = [];
-        let lastWasOperator = true;
-
-        for (let c of exp) {
-            if (c === ' ') continue;
-
-            if (/[a-zA-Z0-9]/.test(c)) {
-                lastWasOperator = false;
-            }
-            else if (c === '(') {
-                stack.push(c);
-                lastWasOperator = true;
-            }
-            else if (c === ')') {
-                if (stack.length === 0) return false;
-                stack.pop();
-                lastWasOperator = false;
-            }
-            else if (isOperator(c)) {
-                if (lastWasOperator) return false;
-                lastWasOperator = true;
-            }
-            else {
-                return false;
-            }
+    // Cannot end with operator
+    for (let i = exp.length - 1; i >=0; i--) {
+        if (exp[i] !== ' ') {
+            if (isOperator(exp[i])) return { valid:false, message:"❌ Invalid expression: incomplete infix (operator at end)" };
+            break;
         }
-        return stack.length === 0 && !lastWasOperator;
     }
 
-    // Infix → Postfix
-    function infixToPostfix(exp) {
-        let stack = [];
-        let result = "";
+    let stack = [];
+    let lastWasOperator = true; // must start with operand or '('
+    let hasOperator = false;
 
-        for (let c of exp) {
-            if (/[a-zA-Z0-9]/.test(c)) {
-                result += c;
+    for (let i = 0; i < exp.length; i++) {
+        let c = exp[i];
+
+        if (c === ' ') continue;
+
+        if (/[A-Z]/.test(c)) {
+            // Multi-letter operands
+            if (i > 0 && /[A-Z]/.test(exp[i-1])) {
+                return { valid:false, message:"❌ Multi-letter operands are not allowed" };
             }
-            else if (c === '(') {
-                stack.push(c);
-            }
-            else if (c === ')') {
-                while (stack.length && stack[stack.length - 1] !== '(')
-                    result += stack.pop();
-                stack.pop();
-            }
-            else if (isOperator(c)) {
-                while (stack.length &&
-                       precedence(c) <= precedence(stack[stack.length - 1])) {
-                    result += stack.pop();
-                }
-                stack.push(c);
-            }
+            if (!lastWasOperator) return { valid:false, message:"❌ Invalid infix: two operands in a row" };
+            lastWasOperator = false;
         }
-
-        while (stack.length)
-            result += stack.pop();
-
-        return result;
-    }
-
-    // Infix → Prefix
-    function infixToPrefix(infix) {
-        if (!isValidInfix(infix)) {
-            return "❌ Invalid Infix Expression";
+        else if (/[a-z]/.test(c)) {
+            return { valid:false, message:"❌ Lowercase letters are not allowed" };
         }
-
-        // Reverse infix
-        let rev = infix.split('').reverse().join('');
-
-        // Swap brackets
-        rev = rev.replace(/\(/g, '#')
-                 .replace(/\)/g, '(')
-                 .replace(/#/g, ')');
-
-        // Convert to postfix
-        let postfix = infixToPostfix(rev);
-
-        // Reverse postfix → prefix
-        return postfix.split('').reverse().join('');
+        else if (/[0-9]/.test(c)) {
+            return { valid:false, message:"❌ Numbers are not allowed" };
+        }
+        else if (isOperator(c)) {
+            if (lastWasOperator) return { valid:false, message:"❌ Invalid infix: two operators cannot be together" };
+            lastWasOperator = true;
+            hasOperator = true;
+        }
+        else if (c === '(') {
+            if (!lastWasOperator && i > 0) return { valid:false, message:"❌ Invalid infix: '(' must follow operator or start of expression" };
+            stack.push(c);
+            lastWasOperator = true;
+        }
+        else if (c === ')') {
+            if (stack.length === 0) return { valid:false, message:"❌ Parentheses are not balanced" };
+            stack.pop();
+            lastWasOperator = false;
+        }
+        else {
+            return { valid:false, message:"❌ Invalid character detected" };
+        }
     }
 
-    function convert() {
-        let infix = document.getElementById("infix").value;
-        let prefix = infixToPrefix(infix);
-        document.getElementById("result").innerText =
-            "Prefix Expression: " + prefix;
+    if (stack.length > 0) return { valid:false, message:"❌ Parentheses are not balanced" };
+    if (!hasOperator) return { valid:false, message:"❌ Expression must include at least one operator" };
+
+    return { valid:true};
+}
+
+// Infix → Postfix
+function infixToPostfix(exp) {
+    let stack = [];
+    let result = "";
+    for (let c of exp) {
+        if (/[A-Z]/.test(c)) {
+            result += c;
+        } else if (c === '(') {
+            stack.push(c);
+        } else if (c === ')') {
+            while (stack.length && stack[stack.length-1] !== '(')
+                result += stack.pop();
+            stack.pop();
+        } else if (isOperator(c)) {
+            while (stack.length && precedence(c) <= precedence(stack[stack.length-1])) {
+                result += stack.pop();
+            }
+            stack.push(c);
+        }
     }
+    while (stack.length) result += stack.pop();
+    return result;
+}
+
+// Infix → Prefix
+function infixToPrefix(infix) {
+    let validation = validateInfix(infix);
+    if (!validation.valid) return validation.message;
+
+    let rev = infix.split('').reverse().join('');
+    rev = rev.replace(/\(/g,'#').replace(/\)/g,'(').replace(/#/g,')');
+
+    let postfix = infixToPostfix(rev);
+
+    return postfix.split('').reverse().join('');
+}
+
+function convert() {
+    let infix = document.getElementById("infix").value;
+    let result = infixToPrefix(infix);
+    document.getElementById("result").innerText = "Prefix Expression: " + result;
+}
 </script>
 
 </body>
