@@ -4,9 +4,21 @@
 <meta charset="UTF-8">
 <title>Infix to Prefix Converter</title>
 <style>
-body { font-family: Arial, sans-serif; background: #f2f2f2; padding: 30px; }
-input, button { width: 100%; padding: 10px; font-size: 16px; margin-top: 10px; }
-#result { margin-top: 15px; font-weight: bold; }
+body {
+    font-family: Arial, sans-serif;
+    background: #f2f2f2;
+    padding: 30px;
+}
+input, button {
+    width: 100%;
+    padding: 10px;
+    font-size: 16px;
+    margin-top: 10px;
+}
+#result {
+    margin-top: 15px;
+    font-weight: bold;
+}
 </style>
 </head>
 <body>
@@ -19,7 +31,7 @@ input, button { width: 100%; padding: 10px; font-size: 16px; margin-top: 10px; }
 <div id="result"></div>
 
 <script>
-// Operator precedence
+// ================= OPERATORS =================
 function precedence(c) {
     switch(c) {
         case '+': case '-': return 1;
@@ -33,29 +45,35 @@ function isOperator(c) {
     return "+-*/^%".includes(c);
 }
 
-// Full validation with numbers blocked
+// ================= VALIDATION =================
 function validateInfix(exp) {
     exp = exp.trim();
-    if (!exp) return { valid:false, message:"❌ Please enter an expression" };
+    if (!exp)
+        return { valid:false, message:"❌ Please enter an expression" };
 
     // Cannot start with operator
-    for (let i = 0; i < exp.length; i++) {
-        if (exp[i] !== ' ') {
-            if (isOperator(exp[i])) return { valid:false, message:"❌ Invalid infix: cannot start with an operator" };
-            break;
-        }
-    }
+    if (isOperator(exp[0]))
+        return { valid:false, message:"❌ Invalid infix: cannot start with an operator" };
 
     // Cannot end with operator
-    for (let i = exp.length - 1; i >=0; i--) {
-        if (exp[i] !== ' ') {
-            if (isOperator(exp[i])) return { valid:false, message:"❌ Invalid expression: incomplete infix (operator at end)" };
-            break;
-        }
+    if (isOperator(exp[exp.length - 1]))
+        return { valid:false, message:"❌ Invalid expression: incomplete infix (operator at end)" };
+
+    // Count operators & parentheses
+    let operatorCount = 0;
+    let hasParentheses = false;
+
+    for (let c of exp) {
+        if (isOperator(c)) operatorCount++;
+        if (c === '(' || c === ')') hasParentheses = true;
     }
 
+    // Parentheses required if 2 or more operators
+    if (operatorCount >= 2 && !hasParentheses)
+        return { valid:false, message:"❌ Parentheses are required when using two or more operators" };
+
     let stack = [];
-    let lastWasOperator = true; // must start with operand or '('
+    let lastWasOperator = true;
     let hasOperator = false;
 
     for (let i = 0; i < exp.length; i++) {
@@ -64,11 +82,12 @@ function validateInfix(exp) {
         if (c === ' ') continue;
 
         if (/[A-Z]/.test(c)) {
-            // Multi-letter operands
-            if (i > 0 && /[A-Z]/.test(exp[i-1])) {
+            if (i > 0 && /[A-Z]/.test(exp[i - 1]))
                 return { valid:false, message:"❌ Multi-letter operands are not allowed" };
-            }
-            if (!lastWasOperator) return { valid:false, message:"❌ Invalid infix: two operands in a row" };
+
+            if (!lastWasOperator)
+                return { valid:false, message:"❌ Invalid infix: two operands in a row" };
+
             lastWasOperator = false;
         }
         else if (/[a-z]/.test(c)) {
@@ -78,17 +97,23 @@ function validateInfix(exp) {
             return { valid:false, message:"❌ Numbers are not allowed" };
         }
         else if (isOperator(c)) {
-            if (lastWasOperator) return { valid:false, message:"❌ Invalid infix: two operators cannot be together" };
+            if (lastWasOperator)
+                return { valid:false, message:"❌ Invalid infix: two operators cannot be together" };
+
             lastWasOperator = true;
             hasOperator = true;
         }
         else if (c === '(') {
-            if (!lastWasOperator && i > 0) return { valid:false, message:"❌ Invalid infix: '(' must follow operator or start of expression" };
+            if (!lastWasOperator)
+                return { valid:false, message:"❌ Invalid infix: '(' must follow an operator" };
+
             stack.push(c);
             lastWasOperator = true;
         }
         else if (c === ')') {
-            if (stack.length === 0) return { valid:false, message:"❌ Parentheses are not balanced" };
+            if (stack.length === 0)
+                return { valid:false, message:"❌ Parentheses are not balanced" };
+
             stack.pop();
             lastWasOperator = false;
         }
@@ -97,37 +122,47 @@ function validateInfix(exp) {
         }
     }
 
-    if (stack.length > 0) return { valid:false, message:"❌ Parentheses are not balanced" };
-    if (!hasOperator) return { valid:false, message:"❌ Expression must include at least one operator" };
+    if (stack.length > 0)
+        return { valid:false, message:"❌ Parentheses are not balanced" };
 
-    return { valid:true};
+    if (!hasOperator)
+        return { valid:false, message:"❌ Expression must include at least one operator" };
+
+    return { valid:true };
 }
 
-// Infix → Postfix
+// INFIX → POSTFIX
 function infixToPostfix(exp) {
     let stack = [];
     let result = "";
+
     for (let c of exp) {
         if (/[A-Z]/.test(c)) {
             result += c;
-        } else if (c === '(') {
+        }
+        else if (c === '(') {
             stack.push(c);
-        } else if (c === ')') {
-            while (stack.length && stack[stack.length-1] !== '(')
+        }
+        else if (c === ')') {
+            while (stack.length && stack[stack.length - 1] !== '(')
                 result += stack.pop();
             stack.pop();
-        } else if (isOperator(c)) {
-            while (stack.length && precedence(c) <= precedence(stack[stack.length-1])) {
+        }
+        else if (isOperator(c)) {
+            while (stack.length &&
+                   precedence(c) <= precedence(stack[stack.length - 1]))
                 result += stack.pop();
-            }
             stack.push(c);
         }
     }
-    while (stack.length) result += stack.pop();
+
+    while (stack.length)
+        result += stack.pop();
+
     return result;
 }
 
-// Infix → Prefix
+// INFIX → PREFIX 
 function infixToPrefix(infix) {
     let validation = validateInfix(infix);
     if (!validation.valid) return validation.message;
@@ -140,12 +175,15 @@ function infixToPrefix(infix) {
     return postfix.split('').reverse().join('');
 }
 
+// RUN 
 function convert() {
     let infix = document.getElementById("infix").value;
     let result = infixToPrefix(infix);
-    document.getElementById("result").innerText = "Prefix Expression: " + result;
+    document.getElementById("result").innerText = result.startsWith("❌")
+        ? result
+        : "Prefix Expression: " + result;
 }
 </script>
 
 </body>
-</html>
+</html></html>
