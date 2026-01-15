@@ -15,7 +15,7 @@ input, button {
     font-size: 16px;
     margin-top: 10px;
 }
-#result {
+#result, #reverse {
     margin-top: 15px;
     font-weight: bold;
 }
@@ -42,6 +42,7 @@ th {
 <button onclick="convert()">Convert</button>
 
 <div id="result"></div>
+<div id="reverse"></div>
 <div id="table"></div>
 
 <script>
@@ -76,15 +77,15 @@ function validateInfix(exp) {
 
         if (/[A-Z]/.test(c)) {
             if (i > 0 && /[A-Z]/.test(exp[i-1]))
-                return { valid:false, message:"❌ Multi-letter operands not allowed" };
+                return { valid:false, message:"❌ Multi-letter operands are not allowed" };
             if (!lastWasOperator)
                 return { valid:false, message:"❌ Two operands together not allowed" };
             lastWasOperator = false;
         }
         else if (/[a-z]/.test(c))
-            return { valid:false, message:"❌ Lowercase letters not allowed" };
+            return { valid:false, message:"❌ Lowercase letters are not allowed" };
         else if (/[0-9]/.test(c))
-            return { valid:false, message:"❌ Numbers not allowed" };
+            return { valid:false, message:"❌ Numbers are not allowed" };
         else if (isOperator(c)) {
             if (lastWasOperator)
                 return { valid:false, message:"❌ Two operators together not allowed" };
@@ -99,7 +100,7 @@ function validateInfix(exp) {
         }
         else if (c === ')') {
             if (stack.length === 0)
-                return { valid:false, message:"❌ Parentheses not balanced" };
+                return { valid:false, message:"❌ Parentheses are not balanced" };
             stack.pop();
             lastWasOperator = false;
         }
@@ -108,16 +109,16 @@ function validateInfix(exp) {
     }
 
     if (stack.length > 0)
-        return { valid:false, message:"❌ Parentheses not balanced" };
+        return { valid:false, message:"❌ Parentheses are not balanced" };
     if (!hasOperator)
-        return { valid:false, message:"❌ At least one operator required" };
+        return { valid:false, message:"❌ Expression must contain at least one operator" };
     if (operatorCount >= 2 && !hasParen)
-        return { valid:false, message:"❌ Parentheses required when using 2 or more operators" };
+        return { valid:false, message:"❌ Parentheses are required when using two or more operators" };
 
     return { valid:true };
 }
 
-// ================= INFIX → POSTFIX WITH TABLE =================
+// ================= INFIX → POSTFIX (WITH STEPS) =================
 function infixToPostfixWithSteps(exp) {
     let stack = [];
     let output = "";
@@ -165,11 +166,16 @@ function infixToPostfixWithSteps(exp) {
 
 // ================= INFIX → PREFIX =================
 function infixToPrefix(infix) {
-    let rev = infix.split('').reverse().join('');
-    rev = rev.replace(/\(/g,'#').replace(/\)/g,'(').replace(/#/g,')');
-    let result = infixToPostfixWithSteps(rev);
+    let reversed = infix.split('').reverse().join('');
+    reversed = reversed.replace(/\(/g,'#').replace(/\)/g,'(').replace(/#/g,')');
+
+    let result = infixToPostfixWithSteps(reversed);
+
+    let prefix = result.postfix.split('').reverse().join('');
+
     return {
-        prefix: result.postfix.split('').reverse().join(''),
+        postfix: result.postfix,
+        prefix: prefix,
         steps: result.steps
     };
 }
@@ -181,13 +187,18 @@ function convert() {
 
     if (!validation.valid) {
         document.getElementById("result").innerText = validation.message;
+        document.getElementById("reverse").innerText = "";
         document.getElementById("table").innerHTML = "";
         return;
     }
 
     let result = infixToPrefix(infix);
+
     document.getElementById("result").innerText =
-        "Prefix Expression: " + result.prefix;
+        "Postfix (from reversed infix): " + result.postfix;
+
+    document.getElementById("reverse").innerText =
+        "Final Prefix Expression (Reversed Output): " + result.prefix;
 
     let html = "<table><tr><th>Symbol</th><th>Stack</th><th>Output</th></tr>";
     for (let step of result.steps) {
@@ -198,6 +209,7 @@ function convert() {
                  </tr>`;
     }
     html += "</table>";
+
     document.getElementById("table").innerHTML = html;
 }
 </script>
