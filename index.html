@@ -1,3 +1,16 @@
+<!--
+BSIT 2-1
+GROUP MEMBERS:
+Sarmiento, Brian James
+Tabares, Charles Vincent
+Petaño, John Michael
+Balbalosa, Cyril
+Mainem, Jackson
+Gaerlan, Julliana Marie
+Coronado, Alyssa
+Menodiado, Jiselle Ann
+-->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -95,7 +108,8 @@ function infixToPostfix(exp) {
                 output += stack.pop();
             stack.pop();
         }
-        else if (isOperator(c)) { <
+        else if (isOperator(c)) {
+            // <        
             while (stack.length &&
                    precedence(c) < precedence(stack[stack.length - 1])) {
                 output += stack.pop();
@@ -114,7 +128,6 @@ function infixToPrefix(infix) {
     let validation = validateInfix(infix);
     if (!validation.valid) return validation.message;
 
-    // Reverse
     let rev = infix.split('').reverse().join('');
     rev = rev.replace(/\(/g,'#').replace(/\)/g,'(').replace(/#/g,')');
 
