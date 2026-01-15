@@ -15,7 +15,7 @@ input, button {
     font-size: 16px;
     margin-top: 10px;
 }
-#result, #reverse, #paren {
+#result, #reverse {
     margin-top: 15px;
     font-weight: bold;
 }
@@ -38,48 +38,52 @@ th {
 
 <h2>Infix to Prefix Converter</h2>
 
-<input type="text" id="infix" placeholder="Enter Infix Expression (e.g., A+B*C-D/E)">
+<input type="text" id="infix" placeholder="Enter Infix Expression (e.g., A+(B*C))">
 <button onclick="convert()">Convert</button>
 
 <div id="result"></div>
 <div id="reverse"></div>
-<div id="paren"></div>
 <div id="table"></div>
 
 <script>
-// ========== OPERATOR UTILS ==========
+// ================= OPERATORS =================
 function precedence(c) {
     if (c === '+' || c === '-') return 1;
     if (c === '*' || c === '/' || c === '%') return 2;
     if (c === '^') return 3;
     return -1;
 }
+
 function isOperator(c) {
     return "+-*/^%".includes(c);
 }
 
-// ========== VALIDATION ==========
+// ================= VALIDATION =================
 function validateInfix(exp) {
     exp = exp.trim();
     if (!exp) return { valid:false, message:"❌ Please enter an expression" };
-    if (isOperator(exp[0])) return { valid:false, message:"❌ Cannot start with operator" };
-    if (isOperator(exp[exp.length-1])) return { valid:false, message:"❌ Cannot end with operator" };
+    if (isOperator(exp[0])) return { valid:false, message:"❌ Invalid infix: cannot start with an operator" };
+    if (isOperator(exp[exp.length-1])) return { valid:false, message:"❌ Invalid infix: cannot end with an operator" };
 
+    let operatorCount = 0;
+    let hasParen = false;
+    let stack = [];
     let lastWasOperator = true;
     let hasOperator = false;
 
     for (let i = 0; i < exp.length; i++) {
         let c = exp[i];
         if (c === ' ') continue;
+
         if (/[A-Z]/.test(c)) {
             if (i > 0 && /[A-Z]/.test(exp[i-1]))
-                return { valid:false, message:"❌ Multi-letter operands not allowed" };
+                return { valid:false, message:"❌ Multi-letter operands are not allowed" };
             if (!lastWasOperator)
                 return { valid:false, message:"❌ Two operands together not allowed" };
             lastWasOperator = false;
         }
         else if (/[a-z]/.test(c))
-            return { valid:false, message:"❌ Lowercase letters not allowed" };
+            return { valid:false, message:"❌ Lowercase letters are not allowed" };
         else if (/[0-9]/.test(c))
             return { valid:false, message:"❌ Numbers are not allowed" };
         else if (isOperator(c)) {
@@ -87,32 +91,42 @@ function validateInfix(exp) {
                 return { valid:false, message:"❌ Two operators together not allowed" };
             lastWasOperator = true;
             hasOperator = true;
+            operatorCount++;
         }
-        else if (c === '(' || c === ')') {
-            lastWasOperator = (c === '(');
+        else if (c === '(') {
+            stack.push(c);
+            hasParen = true;
+            lastWasOperator = true;
+        }
+        else if (c === ')') {
+            if (stack.length === 0)
+                return { valid:false, message:"❌ Parentheses are not balanced" };
+            stack.pop();
+            lastWasOperator = false;
         }
         else
             return { valid:false, message:"❌ Invalid character detected" };
     }
 
+    if (stack.length > 0)
+        return { valid:false, message:"❌ Parentheses are not balanced" };
     if (!hasOperator)
         return { valid:false, message:"❌ Expression must contain at least one operator" };
+    if (operatorCount >= 2 && !hasParen)
+        return { valid:false, message:"❌ Parentheses are required when using two or more operators" };
 
     return { valid:true };
 }
 
-// ========== INFIX → POSTFIX WITH STEPS & /symbol ==========
+// ================= INFIX → POSTFIX (WITH STEPS) =================
 function infixToPostfixWithSteps(exp) {
     let stack = [];
     let output = "";
     let steps = [];
 
-    function snapshot(poppedIndex=-1) {
-        return stack.map((v,i)=>i===poppedIndex ? "/" + v : v).join(" ");
-    }
-
     for (let c of exp) {
         if (c === ' ') continue;
+
         if (/[A-Z]/.test(c)) {
             output += c;
         }
@@ -120,83 +134,74 @@ function infixToPostfixWithSteps(exp) {
             stack.push(c);
         }
         else if (c === ')') {
-            while (stack.length && stack[stack.length-1]!=='(') {
-                let idx = stack.length-1;
-                steps.push({symbol: stack[idx], stack: snapshot(idx), output});
+            while (stack.length && stack[stack.length-1] !== '(')
                 output += stack.pop();
-            }
-            let idx = stack.length-1;
-            steps.push({symbol: '(', stack: snapshot(idx), output});
             stack.pop();
         }
         else if (isOperator(c)) {
-            while (stack.length && precedence(c) <= precedence(stack[stack.length-1])) {
-                let idx = stack.length-1;
-                steps.push({symbol: stack[idx], stack: snapshot(idx), output});
+            while (stack.length &&
+                   precedence(c) <= precedence(stack[stack.length-1]))
                 output += stack.pop();
-            }
             stack.push(c);
         }
-        steps.push({symbol:c, stack:stack.join(" "), output});
+
+        steps.push({
+            symbol: c,
+            stack: stack.join(" "),
+            output: output
+        });
     }
 
-    while(stack.length) {
-        let idx = stack.length-1;
-        steps.push({symbol: stack[idx], stack: snapshot(idx), output});
+    while (stack.length) {
         output += stack.pop();
+        steps.push({
+            symbol: "POP",
+            stack: stack.join(" "),
+            output: output
+        });
     }
 
-    return {postfix: output, steps};
+    return { postfix: output, steps };
 }
 
-// ========== ADD AUTOMATIC PARENTHESES ==========
-function addParentheses(exp) {
-    let stack = [];
-    let output = [];
-    for(let c of exp){
-        if(/[A-Z]/.test(c)) output.push(c);
-        else if(isOperator(c)){
-            let b = output.pop();
-            let a = output.pop();
-            output.push('(' + a + c + b + ')');
-        }
-    }
-    return output[0]; // final expression with parentheses
-}
-
-// ========== INFIX → PREFIX ==========
-function infixToPrefix(infix){
+// ================= INFIX → PREFIX =================
+function infixToPrefix(infix) {
     let reversed = infix.split('').reverse().join('');
     reversed = reversed.replace(/\(/g,'#').replace(/\)/g,'(').replace(/#/g,')');
 
     let result = infixToPostfixWithSteps(reversed);
+
     let prefix = result.postfix.split('').reverse().join('');
 
-    // generate auto parentheses version
-    let autoParen = addParentheses(result.postfix.split('').reverse().join(''));
-    return {postfix: result.postfix, prefix, steps: result.steps, autoParen};
+    return {
+        postfix: result.postfix,
+        prefix: prefix,
+        steps: result.steps
+    };
 }
 
-// ========== RUN ==========
-function convert(){
+// ================= RUN =================
+function convert() {
     let infix = document.getElementById("infix").value;
     let validation = validateInfix(infix);
 
-    if(!validation.valid){
+    if (!validation.valid) {
         document.getElementById("result").innerText = validation.message;
         document.getElementById("reverse").innerText = "";
-        document.getElementById("paren").innerText = "";
         document.getElementById("table").innerHTML = "";
         return;
     }
 
     let result = infixToPrefix(infix);
 
-    document.getElementById("result").innerText = "Prefix Expression: " + result.prefix;
-    document.getElementById("paren").innerText = "Auto Parentheses Version: " + result.autoParen;
+    document.getElementById("result").innerText =
+        "Postfix (from reversed infix): " + result.postfix;
+
+    document.getElementById("reverse").innerText =
+        "Final Prefix Expression (Reversed Output): " + result.prefix;
 
     let html = "<table><tr><th>Symbol</th><th>Stack</th><th>Output</th></tr>";
-    for(let step of result.steps){
+    for (let step of result.steps) {
         html += `<tr>
                     <td>${step.symbol}</td>
                     <td>${step.stack}</td>
