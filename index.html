@@ -19,7 +19,6 @@ input, button { width: 100%; padding: 10px; font-size: 16px; margin-top: 10px; }
 <div id="result"></div>
 
 <script>
-// ================= OPERATORS =================
 function precedence(c) {
     if (c === '+' || c === '-') return 1;
     if (c === '*' || c === '/' || c === '%') return 2;
@@ -31,10 +30,9 @@ function isOperator(c) {
     return "+-*/^%".includes(c);
 }
 
-// ================= VALIDATION =================
 function validateInfix(exp) {
     exp = exp.trim();
-    if (!exp) return { valid:false, message:"❌ Please enter an expression" };
+    if (!exp) return { valid:false, message:"Please enter an expression" };
 
     let stack = [];
     let lastWasOperator = true;
@@ -46,16 +44,16 @@ function validateInfix(exp) {
 
         if (/[A-Z]/.test(c)) {
             if (!lastWasOperator)
-                return { valid:false, message:"❌ Two operands together not allowed" };
+                return { valid:false, message:"Two operands together not allowed" };
             lastWasOperator = false;
         }
         else if (/[a-z]/.test(c))
-            return { valid:false, message:"❌ Lowercase letters not allowed" };
+            return { valid:false, message:"Lowercase letters not allowed" };
         else if (/[0-9]/.test(c))
-            return { valid:false, message:"❌ Numbers not allowed" };
+            return { valid:false, message:"Numbers not allowed" };
         else if (isOperator(c)) {
             if (lastWasOperator)
-                return { valid:false, message:"❌ Two operators together not allowed" };
+                return { valid:false, message:"Two operators together not allowed" };
             lastWasOperator = true;
             hasOperator = true;
         }
@@ -65,23 +63,22 @@ function validateInfix(exp) {
         }
         else if (c === ')') {
             if (!stack.length)
-                return { valid:false, message:"❌ Unbalanced parentheses" };
+                return { valid:false, message:"Unbalanced parentheses" };
             stack.pop();
             lastWasOperator = false;
         }
         else
-            return { valid:false, message:"❌ Invalid character" };
+            return { valid:false, message:"Invalid character" };
     }
 
     if (stack.length)
-        return { valid:false, message:"❌ Unbalanced parentheses" };
+        return { valid:false, message:"Unbalanced parentheses" };
     if (!hasOperator)
-        return { valid:false, message:"❌ Expression must contain an operator" };
+        return { valid:false, message:"Expression must contain an operator" };
 
     return { valid:true };
 }
 
-// ================= INFIX → POSTFIX (FOR PREFIX) =================
 function infixToPostfix(exp) {
     let stack = [];
     let output = "";
@@ -98,8 +95,7 @@ function infixToPostfix(exp) {
                 output += stack.pop();
             stack.pop();
         }
-        else if (isOperator(c)) {
-            // 🔴 IMPORTANT FIX: STRICT <
+        else if (isOperator(c)) { <
             while (stack.length &&
                    precedence(c) < precedence(stack[stack.length - 1])) {
                 output += stack.pop();
@@ -114,7 +110,6 @@ function infixToPostfix(exp) {
     return output;
 }
 
-// ================= INFIX → PREFIX =================
 function infixToPrefix(infix) {
     let validation = validateInfix(infix);
     if (!validation.valid) return validation.message;
@@ -127,7 +122,6 @@ function infixToPrefix(infix) {
     return postfix.split('').reverse().join('');
 }
 
-// ================= RUN =================
 function convert() {
     let infix = document.getElementById("infix").value;
     let result = infixToPrefix(infix);
