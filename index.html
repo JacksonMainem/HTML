@@ -93,16 +93,17 @@ function validateInfix(exp){
 // =================== AUTO-PARENTHESES ===================
 // Fully parenthesize infix expression based on PEMDAS
 function autoParenthesize(exp){
-    let stack=[]; 
+    let stack=[];
     for(let c of exp){
         if(/[A-Z]/.test(c)) stack.push(c);
         else if(isOperator(c)){
+            if(stack.length < 2) return exp; // fallback if invalid, avoid undefined
             let b=stack.pop();
             let a=stack.pop();
             stack.push('('+a+c+b+')');
         }
     }
-    return stack[0]; 
+    return stack.length>0 ? stack[0] : exp;
 }
 
 // =================== INFIX → POSTFIX WITH STEPS ===================
@@ -120,17 +121,19 @@ function infixToPostfixWithSteps(exp){
         if(/[A-Z]/.test(c)) output+=c;
         else if(c==='(') stack.push(c);
         else if(c===')'){
-            while(stack.length&&stack[stack.length-1]!=='('){
+            while(stack.length && stack[stack.length-1]!=='('){
                 let idx=stack.length-1;
                 steps.push({symbol:stack[idx],stack:snapshot(idx),output});
                 output+=stack.pop();
             }
-            let idx=stack.length-1;
-            steps.push({symbol:'(',stack:snapshot(idx),output});
-            stack.pop();
+            if(stack.length>0){
+                let idx=stack.length-1;
+                steps.push({symbol:'(',stack:snapshot(idx),output});
+                stack.pop();
+            }
         }
         else if(isOperator(c)){
-            while(stack.length&&precedence(c)<=precedence(stack[stack.length-1])){
+            while(stack.length && precedence(c)<=precedence(stack[stack.length-1])){
                 let idx=stack.length-1;
                 steps.push({symbol:stack[idx],stack:snapshot(idx),output});
                 output+=stack.pop();
@@ -151,20 +154,15 @@ function infixToPostfixWithSteps(exp){
 
 // =================== INFIX → PREFIX ===================
 function infixToPrefix(infix){
-    // Detect if user included parentheses
     let hasParen = infix.includes('(') || infix.includes(')');
-
-    // Auto-parentheses only if user has no parentheses
     let exprForSteps = hasParen ? infix : autoParenthesize(infix);
 
-    // For prefix conversion, reverse the expression
     let reversed = exprForSteps.split('').reverse().join('');
     reversed = reversed.replace(/\(/g,'#').replace(/\)/g,'(').replace(/#/g,')');
 
     let result = infixToPostfixWithSteps(reversed);
     let prefix = result.postfix.split('').reverse().join('');
 
-    // Auto parentheses version for display if user didn't include them
     let autoParenVersion = hasParen ? exprForSteps : exprForSteps;
 
     return {prefix,prefixWithParen:autoParenVersion,steps:result.steps};
