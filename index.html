@@ -118,46 +118,73 @@ function validateInfix(exp) {
     return { valid:true };
 }
 
-// ================= INFIX → POSTFIX (WITH STEPS) =================
+// ================= INFIX → POSTFIX WITH IN-MIDDLE POP MARK =================
 function infixToPostfixWithSteps(exp) {
     let stack = [];
     let output = "";
     let steps = [];
+
+    function stackSnapshot(poppedIndex = -1) {
+        return stack.map((v, i) =>
+            i === poppedIndex ? "/" + v : v
+        ).join(" ");
+    }
 
     for (let c of exp) {
         if (c === ' ') continue;
 
         if (/[A-Z]/.test(c)) {
             output += c;
+            steps.push({ symbol: c, stack: stack.join(" "), output });
         }
         else if (c === '(') {
             stack.push(c);
+            steps.push({ symbol: c, stack: stack.join(" "), output });
         }
         else if (c === ')') {
-            while (stack.length && stack[stack.length-1] !== '(')
-                output += stack.pop();
-            stack.pop();
+            while (stack.length && stack[stack.length-1] !== '(') {
+                let idx = stack.length - 1;
+                let popped = stack.pop();
+                output += popped;
+                steps.push({
+                    symbol: popped,
+                    stack: stackSnapshot(idx),
+                    output
+                });
+            }
+            let idx = stack.length - 1;
+            stack.pop(); // remove '('
+            steps.push({
+                symbol: "(",
+                stack: stackSnapshot(idx),
+                output
+            });
         }
         else if (isOperator(c)) {
             while (stack.length &&
-                   precedence(c) <= precedence(stack[stack.length-1]))
-                output += stack.pop();
+                   precedence(c) <= precedence(stack[stack.length-1])) {
+                let idx = stack.length - 1;
+                let popped = stack.pop();
+                output += popped;
+                steps.push({
+                    symbol: popped,
+                    stack: stackSnapshot(idx),
+                    output
+                });
+            }
             stack.push(c);
+            steps.push({ symbol: c, stack: stack.join(" "), output });
         }
-
-        steps.push({
-            symbol: c,
-            stack: stack.join(" "),
-            output: output
-        });
     }
 
     while (stack.length) {
-        output += stack.pop();
+        let idx = stack.length - 1;
+        let popped = stack.pop();
+        output += popped;
         steps.push({
-            symbol: "POP",
-            stack: stack.join(" "),
-            output: output
+            symbol: popped,
+            stack: stackSnapshot(idx),
+            output
         });
     }
 
@@ -170,7 +197,6 @@ function infixToPrefix(infix) {
     reversed = reversed.replace(/\(/g,'#').replace(/\)/g,'(').replace(/#/g,')');
 
     let result = infixToPostfixWithSteps(reversed);
-
     let prefix = result.postfix.split('').reverse().join('');
 
     return {
@@ -198,7 +224,7 @@ function convert() {
         "Postfix (from reversed infix): " + result.postfix;
 
     document.getElementById("reverse").innerText =
-        "Final Prefix Expression (Reversed Output): " + result.prefix;
+        "Final Prefix Expression: " + result.prefix;
 
     let html = "<table><tr><th>Symbol</th><th>Stack</th><th>Output</th></tr>";
     for (let step of result.steps) {
